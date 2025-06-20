@@ -19,11 +19,17 @@ const HeroSection = () => {
 
   return (
     <section className="relative w-full h-screen overflow-hidden font-sans">
-      {/* Background Image */}
-      <div
-        className="absolute inset-0 bg-cover bg-center transition-all duration-[3000ms] scale-105"
-        style={{ backgroundImage: `url(${images[index]})` }}
-      ></div>
+      {/* All images rendered with only the active one fully visible */}
+      {images.map((img, i) => (
+        <img
+          key={i}
+          src={img}
+          alt={`Slide ${i}`}
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ease-in-out ${
+            index === i ? 'opacity-100 z-0' : 'opacity-0'
+          }`}
+        />
+      ))}
 
       {/* Light Overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/20 to-white/10 z-10 backdrop-blur-[1px]" />
