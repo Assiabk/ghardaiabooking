@@ -12,6 +12,8 @@ const Navbar = () => {
         <nav className="hidden md:flex space-x-6 rtl:space-x-reverse text-white font-medium">
           <a href="/">الرئيسية</a>
           <a href="/search">البحث</a>
+          <a href="/iqamat">الإقامات السياحية</a>
+          <a href="/wikalat">الوكالات</a>
           <a href="/about">عن المنصة</a>
           <a href="/login">تسجيل الدخول</a>
         </nav>
@@ -33,7 +35,7 @@ const Navbar = () => {
         />
       )}
 
-      {/* Mobile dropdown menu */}
+      {/* Mobile Nav */}
       <div
         className={`fixed top-16 right-4 w-[85%] max-w-xs bg-white rounded-xl shadow-2xl z-50 p-6 transform transition-all duration-300 ease-out ${
           open ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'
@@ -42,7 +44,8 @@ const Navbar = () => {
         <nav className="flex flex-col space-y-4 text-right text-gray-800 font-medium">
           <a href="/" className="hover:text-[#800020] transition">الرئيسية</a>
           <a href="/search" className="hover:text-[#800020] transition">البحث</a>
-          <a href="/about" className="hover:text-[#800020] transition">عن المنصة</a>
+          <a href="/iqamat" className="hover:text-[#800020] transition">الإقامات السياحية</a>
+          <a href="/wikalat" className="hover:text-[#800020] transition">الوكالات</a>
           <a href="/login" className="hover:text-[#800020] transition">تسجيل الدخول</a>
         </nav>
       </div>

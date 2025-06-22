@@ -19,7 +19,6 @@ const HeroSection = () => {
 
   return (
     <section className="relative w-full h-screen overflow-hidden font-sans">
-      {/* All images rendered with only the active one fully visible */}
       {images.map((img, i) => (
         <img
           key={i}
@@ -31,10 +30,8 @@ const HeroSection = () => {
         />
       ))}
 
-      {/* Light Overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/20 to-white/10 z-10 backdrop-blur-[1px]" />
 
-      {/* Centered Text Box */}
       <div className="absolute inset-0 flex items-center justify-center z-20 px-4">
         <div className="bg-black/20 backdrop-blur-sm rounded-lg p-4 md:p-6 text-center text-white max-w-xl">
           <h1 className="text-3xl md:text-5xl font-bold mb-3 leading-snug tracking-wide drop-shadow">

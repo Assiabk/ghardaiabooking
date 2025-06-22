@@ -1,212 +1,292 @@
-import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { FaHeart, FaShareAlt, FaStar } from 'react-icons/fa';
+// src/pages/HotelDetail.jsx
+import React, { useEffect, useState } from 'react';
+import { useParams }                  from 'react-router-dom';
+import { FaStar }                     from 'react-icons/fa';
 
-const hotelData = {
-  1: {
-    name: 'فندق الواحة',
-    rating: 8.3,
-    reviews: 697,
-    description: 'فندق تقليدي وسط مدينة غرداية، يقدم غرف مريحة وخدمة ممتازة.',
-    price: 4000,
-    services: ['Wi-Fi', 'فطور مجاني', 'مكيف هوائي', 'موقف سيارات'],
-    images: [
-      'https://i.pinimg.com/736x/09/a5/26/09a52686fdfab8e9e3fb5b2975510bc2.jpg',
-      'https://i.pinimg.com/736x/6a/7b/13/6a7b1330b3186f6906c08b2610ece847.jpg',
-    ],
-    location: 'https://maps.google.com?q=Ghardaia',
-  },
-};
+// Change this if your API lives somewhere else:
+const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:5000';
 
-const tabs = ['نظرة عامة', 'الأسعار & معلومات', 'المرافق', 'قوانين الفندق', 'آراء الضيوف'];
-
-const HotelDetail = () => {
+export default function HotelDetail() {
   const { id } = useParams();
-  const hotel = hotelData[id];
-  const [activeTab, setActiveTab] = useState(0);
 
-  const [nights, setNights] = useState('');
-  const [adults, setAdults] = useState('');
-  const [children, setChildren] = useState('');
-  const [customer, setCustomer] = useState({ name: '', email: '' });
-  const [showSnackbar, setShowSnackbar] = useState(false);
+  const [hotel,        setHotel]        = useState(null);
+  const [fetchError,   setFetchError]   = useState('');
+  const [checkIn,      setCheckIn]      = useState('');
+  const [nightsInput,  setNightsInput]  = useState('');
+  const [checkOut,     setCheckOut]     = useState('');
+  const [availability, setAvailability] = useState(null);
+  const [bookingInfo,  setBookingInfo]  = useState({
+    name:     '',
+    phone:    '',
+    roomType: '',
+  });
+  const [bookingError, setBookingError]  = useState('');
+  const [snackbar,     setSnackbar]      = useState(false);
 
+  // 1) Fetch hotel on mount, with full URL + robust error handling
   useEffect(() => {
-    if (showSnackbar) {
-      const timer = setTimeout(() => setShowSnackbar(false), 3000);
-      return () => clearTimeout(timer);
+    async function fetchHotel() {
+      const url = `${API_BASE}/api/admin/hotels/${id}`;
+      console.log('⚡️ Fetching hotel:', url);
+      try {
+        const res = await fetch(url);
+        const text = await res.text();
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}\n${text}`);
+        }
+        const data = JSON.parse(text);
+        setHotel(data);
+      } catch (err) {
+        setFetchError(err.message);
+      }
     }
-  }, [showSnackbar]);
+    fetchHotel();
+  }, [id]);
 
-  if (!hotel) {
-    return <div className="text-center text-xl mt-20 text-red-600">لم يتم العثور على هذا الفندق</div>;
-  }
+  // 2) Recompute check-out when date/nights change
+  useEffect(() => {
+    setAvailability(null);
+    setBookingError('');
+    if (checkIn && /^\d+$/.test(nightsInput) && Number(nightsInput) > 0) {
+      const d = new Date(checkIn);
+      d.setDate(d.getDate() + Number(nightsInput));
+      const YYYY = d.getFullYear();
+      const MM   = String(d.getMonth() + 1).padStart(2, '0');
+      const DD   = String(d.getDate()).padStart(2, '0');
+      setCheckOut(`${YYYY}-${MM}-${DD}`);
+    } else {
+      setCheckOut('');
+    }
+  }, [checkIn, nightsInput]);
 
-  // parse nights to number, default to 1 if empty or invalid
-  const nightsNum = parseInt(nights, 10) >= 1 ? parseInt(nights, 10) : 1;
-  const totalPrice = hotel.price * nightsNum;
+  // 3) Totals
+  const nights = Number(nightsInput) || 0;
+  const total  = hotel ? nights * hotel.price : 0;
 
-  const handleSubmit = e => {
-    e.preventDefault();
-    // parse all values
-    const booking = {
-      name: customer.name.trim(),
-      email: customer.email.trim(),
-      nights: nightsNum,
-      adults: parseInt(adults, 10) >= 1 ? parseInt(adults, 10) : 1,
-      children: parseInt(children, 10) >= 0 ? parseInt(children, 10) : 0,
-      total: totalPrice,
-    };
-    console.log('Booking info:', booking);
-    setShowSnackbar(true);
+  // 4) Check availability
+  const handleCheckAvailability = async () => {
+    if (!checkIn || !checkOut) return;
+    const url = `${API_BASE}/api/admin/hotels/${id}/check-availability`;
+    console.log('🔍 Checking availability:', url, { checkIn, checkOut });
+    try {
+      const res  = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ checkIn, checkOut }),
+      });
+      const text = await res.text();
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}\n${text}`);
+      }
+      const json = JSON.parse(text);
+      setAvailability(json.available);
+    } catch (err) {
+      console.error(err);
+      setAvailability(false);
+    }
   };
 
-  return (
-    <div className="bg-gray-100 font-sans text-right min-h-screen pb-16">
-      {/* Header with clear, high-res image */}
-      <div className="relative">
-        <img
-          src={hotel.images[0]}
-          alt="main"
-          className="w-full h-80 md:h-[500px] object-cover object-center"
-        />
-        <div className="absolute top-4 right-4 flex items-center space-x-2">
-          <button className="p-2 bg-white rounded-full shadow"><FaHeart className="text-2xl text-[#800020]" /></button>
-          <button className="p-2 bg-white rounded-full shadow"><FaShareAlt className="text-2xl text-gray-600" /></button>
-        </div>
+  // 5) Submit booking
+  const handleBooking = async (e) => {
+    e.preventDefault();
+    setBookingError('');
+    if (!availability) return;
+
+    const payload = {
+      ...bookingInfo,
+      checkIn,
+      checkOut,
+      nights,
+      total,
+    };
+
+    const url = `${API_BASE}/api/admin/hotels/${id}/book`;
+    console.log('✉️ Booking hotel:', url, payload);
+    try {
+      const res  = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const text = await res.text();
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}\n${text}`);
+      }
+      setSnackbar(true);
+      setTimeout(() => setSnackbar(false), 3000);
+    } catch (err) {
+      console.error(err);
+      setBookingError(err.message);
+    }
+  };
+
+  // 6) Render states
+  if (fetchError) {
+    return (
+      <div className="text-center mt-20 text-red-600">
+        خطأ أثناء جلب بيانات الفندق:<br />{fetchError}
       </div>
+    );
+  }
+  if (!hotel) {
+    return (
+      <div className="text-center mt-20">جاري تحميل بيانات الفندق…</div>
+    );
+  }
 
-      <div className="max-w-6xl mx-auto px-4 mt-6 flex flex-col lg:flex-row gap-8">
-        {/* Main content */}
-        <div className="flex-1 space-y-6">
-          <div className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center">
-            <h1 className="text-3xl font-bold text-[#800020]">{hotel.name}</h1>
-            <div className="flex items-center gap-1 mt-2 sm:mt-0">
-              <FaStar className="text-yellow-500" />
-              <span className="font-semibold">{hotel.rating}</span>
-              <span className="text-gray-600">({hotel.reviews} تقييم)</span>
-            </div>
+  return (
+    <div className="min-h-screen bg-gray-50 text-right">
+      {hotel.images?.[0] && (
+        <img
+          src={`data:image/jpeg;base64,${hotel.images[0]}`}
+          alt={hotel.name}
+          className="w-full max-h-64 object-cover"
+        />
+      )}
+
+      <div className="max-w-4xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Info panel */}
+        <div className="lg:col-span-2 space-y-4">
+          <h1 className="text-2xl font-bold text-[#800020]">
+            {hotel.name}
+          </h1>
+          <div className="flex items-center gap-2">
+            <FaStar className="text-yellow-500" />
+            <span className="font-semibold">{hotel.rating}</span>
+            <span className="text-gray-600">({hotel.reviews} تقييم)</span>
           </div>
-
-          {/* Tabs */}
-          <nav className="flex overflow-x-auto border-b" dir="rtl">
-            {tabs.map((tab, idx) => (
-              <button
-                key={idx}
-                className={`px-4 py-2 whitespace-nowrap ${activeTab === idx ? 'border-b-2 border-[#800020] text-[#800020]' : 'text-gray-600'}`}
-                onClick={() => setActiveTab(idx)}
+          <p className="text-gray-700">{hotel.description}</p>
+          <p><strong>السعر/ليلة:</strong> {hotel.price} دج</p>
+          <p><strong>العنوان:</strong> {hotel.address}</p>
+          {hotel.location && (
+            <p>
+              <strong>الموقع:</strong>{' '}
+              <a
+                href={hotel.location}
+                target="_blank"
+                rel="noreferrer"
+                className="text-blue-600 underline"
               >
-                {tab}
-              </button>
-            ))}
-          </nav>
-
-          <div className="mt-4">
-            {activeTab === 0 && <p className="text-gray-700 leading-relaxed">{hotel.description}</p>}
-            {activeTab === 1 && (
-              <div className="space-y-2">
-                <p>السعر لكل ليلة: <span className="font-medium">{hotel.price} دج</span></p>
-                <p>المجموع ({nightsNum} ليلة): <span className="font-medium">{totalPrice} دج</span></p>
-              </div>
-            )}
-            {activeTab === 2 && (
-              <ul className="list-disc list-inside space-y-1 text-gray-600">
-                {hotel.services.map((s, i) => <li key={i}>{s}</li>)}
-              </ul>
-            )}
-            {activeTab === 3 && <p className="text-gray-700">يرجى الالتزام بقوانين الفندق واحترام الآخرين.</p>}
-            {activeTab === 4 && <p className="text-gray-700">آراء العملاء هنا قادمة قريباً.</p>}
-          </div>
-
-          {/* Thumbnails */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-6">
-            {hotel.images.slice(1,5).map((img, i) => (
-              <img
-                key={i}
-                src={img}
-                alt={`thumb-${i}`}
-                className="h-24 w-full object-cover rounded-md cursor-pointer hover:opacity-75"
-              />
-            ))}
-            {hotel.images.length > 5 && (
-              <div className="h-24 flex items-center justify-center bg-gray-200 rounded-md">
-                +{hotel.images.length - 5}
-              </div>
-            )}
-          </div>
+                عرض على الخريطة
+              </a>
+            </p>
+          )}
+          {hotel.services?.length > 0 && (
+            <ul className="list-disc list-inside mt-4 text-gray-700">
+              {hotel.services.map((s, i) => <li key={i}>{s}</li>)}
+            </ul>
+          )}
         </div>
 
-        {/* Booking box - sticky */}
-        <aside className="w-full lg:w-1/3 sticky top-24 bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-2xl font-bold text-[#800020] mb-4">تأكيد الحجز</h2>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <input
-              type="text"
-              placeholder="الاسم الكامل"
-              value={customer.name}
-              onChange={e => setCustomer({ ...customer, name: e.target.value })}
-              required
-              className="w-full border border-gray-300 rounded-md p-3"
-            />
-
-            <input
-              type="email"
-              placeholder="البريد الإلكتروني"
-              value={customer.email}
-              onChange={e => setCustomer({ ...customer, email: e.target.value })}
-              required
-              className="w-full border border-gray-300 rounded-md p-3"
-            />
-
-            <div className="grid grid-cols-3 gap-2">
+        {/* Booking sidebar */}
+        <aside className="bg-white p-6 rounded-lg shadow">
+          <h2 className="text-xl font-bold mb-4">حجز الفندق</h2>
+          <div className="space-y-4">
+            <div>
+              <label className="block mb-1">تاريخ الوصول</label>
               <input
-                type="number"
-                min={1}
-                value={nights}
-                onChange={e => setNights(e.target.value)}
-                placeholder="عدد الليالي"
-                className="border border-gray-300 rounded-md p-3"
-              />
-              <input
-                type="number"
-                min={1}
-                value={adults}
-                onChange={e => setAdults(e.target.value)}
-                placeholder="عدد البالغين"
-                className="border border-gray-300 rounded-md p-3"
-              />
-              <input
-                type="number"
-                min={0}
-                value={children}
-                onChange={e => setChildren(e.target.value)}
-                placeholder="عدد الأطفال"
-                className="border border-gray-300 rounded-md p-3"
+                type="date"
+                value={checkIn}
+                onChange={(e) => setCheckIn(e.target.value)}
+                className="w-full border p-2 rounded"
               />
             </div>
 
-            <div className="flex justify-between items-center pt-4">
-              <span className="font-semibold text-lg">الإجمالي: {totalPrice} دج</span>
+            <div>
+              <label className="block mb-1">عدد الليالي</label>
+              <input
+                type="number"
+                min="1"
+                value={nightsInput}
+                onChange={(e) => setNightsInput(e.target.value)}
+                className="w-full border p-2 rounded"
+              />
+            </div>
+
+            <button
+              onClick={handleCheckAvailability}
+              disabled={!checkIn || !nights}
+              className="w-full bg-[#800020] text-white py-2 rounded disabled:opacity-50"
+            >
+              تحقق من التوفر
+            </button>
+
+            {availability !== null && (
+              <p className={availability ? 'text-green-600' : 'text-red-600'}>
+                {availability
+                  ? `متوفر حتى ${checkOut}`
+                  : 'لا توجد غرف في هذه التواريخ'}
+              </p>
+            )}
+
+            <form onSubmit={handleBooking} className="space-y-4">
+              <input
+                type="text"
+                placeholder="الاسم الكامل"
+                required
+                value={bookingInfo.name}
+                onChange={(e) =>
+                  setBookingInfo({ ...bookingInfo, name: e.target.value })
+                }
+                className="w-full border p-2 rounded"
+              />
+
+              <input
+                type="tel"
+                placeholder="رقم الهاتف"
+                required
+                value={bookingInfo.phone}
+                onChange={(e) =>
+                  setBookingInfo({ ...bookingInfo, phone: e.target.value })
+                }
+                className="w-full border p-2 rounded"
+              />
+
+              <select
+                required
+                value={bookingInfo.roomType}
+                onChange={(e) =>
+                  setBookingInfo({ ...bookingInfo, roomType: e.target.value })
+                }
+                className="w-full border p-2 rounded"
+              >
+                <option value="" disabled>
+                  اختر نوع الغرفة
+                </option>
+                {hotel.rooms.map((r, i) => (
+                  <option key={i} value={r.type}>
+                    {r.type} ({r.price} دج/ليلة)
+                  </option>
+                ))}
+              </select>
+
+              <div className="text-gray-800">
+                عدد الليالي: <strong>{nights}</strong>
+                <br />
+                الإجمالي: <strong>{total}</strong> دج
+              </div>
+
+              {bookingError && (
+                <p className="text-red-500 text-sm">{bookingError}</p>
+              )}
+
               <button
                 type="submit"
-                className="bg-[#800020] text-white px-6 py-2 rounded-md hover:bg-[#990022] transition"
+                disabled={!availability}
+                className="w-full bg-[#800020] text-white py-2 rounded disabled:opacity-50"
               >
                 احجز الآن
               </button>
-            </div>
-          </form>
-
-          <div
-            className={`fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg transform transition duration-300 ${
-              showSnackbar ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
-            }`}
-          >
-            تم إرسال الحجز بنجاح!
+            </form>
           </div>
         </aside>
       </div>
+
+      {snackbar && (
+        <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow-lg">
+        تم حفظ الحجز بنجاح!
+        </div>
+      )}
     </div>
   );
-};
-
-export default HotelDetail;
+}
