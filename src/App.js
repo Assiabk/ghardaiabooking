@@ -1,21 +1,28 @@
-// src/App.jsx
+// ✅ App.js (Full Rewrite)
 import React from 'react';
 import {
   BrowserRouter as Router,
   Routes,
   Route,
-  useLocation
+  useLocation,
 } from 'react-router-dom';
 
-import Navbar        from './components/Navbar.jsx';
-import HomePage      from './pages/HomePage.jsx';
-import HotelDetail   from './pages/HotelDetail.jsx';
-import LoginPage     from './pages/LoginPage.jsx';
-import IqamatList    from './pages/IqamatList.jsx';
-import IqamatDetail  from './pages/IqamatDetail.jsx';
-import { WikalatList }   from './pages/WikalatList.jsx';
-import WikalatDetail from './pages/WikalatDetail.jsx';
+import { AuthProvider } from './auth/AuthContext.jsx';
+import PrivateRoute from './auth/PrivateRoute.jsx';
 
+import Navbar from './components/Navbar.jsx';
+
+// Public Pages
+import HomePage        from './pages/HomePage.jsx';
+import LoginPage       from './pages/LoginPage.jsx';
+import AdminLoginPage  from './pages/AdminLoginPage.jsx';
+import HotelDetail     from './pages/HotelDetail.jsx';
+import IqamatList      from './pages/IqamatList.jsx';
+import IqamatDetail    from './pages/IqamatDetail.jsx';
+import { WikalatList } from './pages/WikalatList.jsx'; // ✅ Correct
+import WikalatDetail   from './pages/WikalatDetail.jsx';
+
+// Admin Pages
 import DashboardHome from './dashboard/frontend/DashboardHome.jsx';
 import AddHotel      from './dashboard/frontend/AddHotel.jsx';
 import AddWikala     from './dashboard/frontend/AddWikala.jsx';
@@ -24,33 +31,71 @@ import AddIqama      from './dashboard/frontend/AddIqama.jsx';
 function AppContent() {
   const { pathname } = useLocation();
 
-  // hide Navbar on admin routes AND on hotel detail pages
+  const hideNavbarRoutes = [
+    '/admin',
+    '/admin-login',
+  ];
+
   const hideNavbar =
-    pathname.startsWith('/admin') ||
-    pathname.startsWith('/hotel/');
+    hideNavbarRoutes.some((prefix) => pathname.startsWith(prefix)) ||
+    pathname.startsWith('/hotel/') ||
+    pathname.startsWith('/iqamat/') ||
+    pathname.startsWith('/wikalat/');
 
   return (
     <>
       {!hideNavbar && <Navbar />}
 
       <Routes>
-        {/* Public pages */}
-        <Route path="/"            element={<HomePage />} />
-        <Route path="/hotel/:id"   element={<HotelDetail />} />
-        <Route path="/iqamat"      element={<IqamatList />} />
-        <Route path="/iqamat/:id"  element={<IqamatDetail />} />
-        <Route path="/wikalat"     element={<WikalatList />} />
-        <Route path="/wikalat/:id" element={<WikalatDetail />} />
-        <Route path="/login"       element={<LoginPage />} />
+        {/* Public Routes */}
+        <Route path="/"                element={<HomePage />} />
+        <Route path="/login"           element={<LoginPage />} />
+        <Route path="/admin-login"     element={<AdminLoginPage />} />
+        <Route path="/hotel/:id"       element={<HotelDetail />} />
+        <Route path="/iqamat"          element={<IqamatList />} />
+        <Route path="/iqamat/:id"      element={<IqamatDetail />} />
+        <Route path="/wikalat"         element={<WikalatList />} />
+        <Route path="/wikalat/:id"     element={<WikalatDetail />} />
 
-        {/* Admin dashboard */}
-        <Route path="/admin"             element={<DashboardHome />} />
-        <Route path="/admin/add-hotel"   element={<AddHotel />} />
-        <Route path="/admin/add-wikala"  element={<AddWikala />} />
-        <Route path="/admin/add-iqama"   element={<AddIqama />} />
+        {/* Protected Admin Routes */}
+        <Route
+          path="/admin"
+          element={
+            <PrivateRoute>
+              <DashboardHome />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/admin/add-hotel"
+          element={
+            <PrivateRoute>
+              <AddHotel />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/admin/add-wikala"
+          element={
+            <PrivateRoute>
+              <AddWikala />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/admin/add-iqama"
+          element={
+            <PrivateRoute>
+              <AddIqama />
+            </PrivateRoute>
+          }
+        />
 
-        {/* Fallback for 404 */}
-        <Route path="*" element={<div className="text-center p-8">صفحة غير موجودة</div>} />
+        {/* 404 Not Found */}
+        <Route
+          path="*"
+          element={<div className="text-center p-8">صفحة غير موجودة</div>}
+        />
       </Routes>
     </>
   );
@@ -58,8 +103,10 @@ function AppContent() {
 
 export default function App() {
   return (
-    <Router>
-      <AppContent />
-    </Router>
+    <AuthProvider>
+      <Router>
+        <AppContent />
+      </Router>
+    </AuthProvider>
   );
 }

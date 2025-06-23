@@ -1,6 +1,13 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { FaFacebookF, FaInstagram, FaTwitter, FaChevronUp } from 'react-icons/fa';
+import {
+  FaFacebookF,
+  FaInstagram,
+  FaTwitter,
+  FaChevronUp,
+  FaUserShield,
+} from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
 
 const footerVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -8,6 +15,8 @@ const footerVariants = {
 };
 
 export default function Footer() {
+  const navigate = useNavigate();
+
   return (
     <motion.footer
       variants={footerVariants}
@@ -57,6 +66,14 @@ export default function Footer() {
             <a href="#" className="hover:text-white"><FaFacebookF /></a>
             <a href="#" className="hover:text-white"><FaInstagram /></a>
             <a href="#" className="hover:text-white"><FaTwitter /></a>
+            <button
+  onClick={() => navigate('/admin-login')}
+  className="hover:text-white"
+  title="تسجيل دخول المشرف"
+>
+  <FaUserShield />
+</button>
+
           </div>
           <p className="text-gray-300 text-xs">
             © {new Date().getFullYear()} غرداية بعيونك. جميع الحقوق محفوظة.
